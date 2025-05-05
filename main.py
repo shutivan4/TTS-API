@@ -1,21 +1,24 @@
-
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi import FastAPI
+from pydantic import BaseModel
 import edge_tts
-import uuid
 import asyncio
 
 app = FastAPI()
 
-@app.post("/tts")
-async def tts(req: Request):
-    body = await req.json()
-    text = body.get("text", "Hello, world")
-    voice = body.get("voice", "en-US-GuyNeural")
-    rate = body.get("rate", "0%")
-    pitch = body.get("pitch", "0%")
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = "en-US-GuyNeural"
+    rate: str = "-30%"
+    pitch: str = "-10%"
 
-    filename = f"/tmp/{uuid.uuid4()}.mp3"
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(filename, rate=rate, pitch=pitch)
-    return FileResponse(filename, media_type="audio/mpeg", filename="voice.mp3")
+@app.post("/tts")
+async def tts(req: TTSRequest):
+    communicate = edge_tts.Communicate(
+        text=req.text,
+        voice=req.voice,
+        rate=req.rate,
+        pitch=req.pitch
+    )
+    output_path = "output.mp3"
+    await communicate.save(output_path)
+    return {"message": "TTS completed", "file": output_path}
